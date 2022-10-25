@@ -1,20 +1,14 @@
 # -*- coding: utf-8 -*-
-from unittest import result
 from iq_gnc.PrintColours import *
 import rospy
 from math import atan2, pow, sqrt, degrees, radians, sin, cos
 from geometry_msgs.msg import Pose, PoseStamped, Point, Quaternion
-from sensor_msgs.msg import NavSatFix
 from nav_msgs.msg import Odometry
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandTOL, CommandTOLRequest
 from mavros_msgs.srv import CommandLong, CommandLongRequest
 from mavros_msgs.srv import CommandBool, CommandBoolRequest
 from mavros_msgs.srv import SetMode, SetModeRequest
-from mavros_msgs.msg import Waypoint, WaypointList, CommandCode
-from mavros_msgs.srv import WaypointPull, WaypointPush, WaypointClear
-from std_msgs.msg import String
-
 
 """Control Functions
 	This module is designed to make high level control programming simple.
@@ -26,7 +20,6 @@ class gnc_api:
         """This function is called at the beginning of a program and will start of the communication links to the FCU.
         """
         self.current_state_g = State()
-        self.current_pose_glb = NavSatFix()
         self.current_pose_g = Odometry()
         self.correction_vector_g = Pose()
         self.local_offset_pose_g = Point()
@@ -48,19 +41,12 @@ class gnc_api:
             data_class=PoseStamped,
             queue_size=10,
         )
- 
+
         self.currentPos = rospy.Subscriber(
             name="{}mavros/global_position/local".format(self.ns),
             data_class=Odometry,
             queue_size=10,
             callback=self.pose_cb,
-        )
-
-        self.currentGlobalPos = rospy.Subscriber(
-            name="{}mavros/global_position/global".format(self.ns),
-            data_class=NavSatFix,
-            queue_size=10,
-            callback=self.pose_glb_cb,
         )
 
         self.state_sub = rospy.Subscriber(
@@ -75,11 +61,7 @@ class gnc_api:
         self.arming_client = rospy.ServiceProxy(
             name="{}mavros/cmd/arming".format(self.ns), service_class=CommandBool
         )
-        
-        self.waypoint_client = rospy.ServiceProxy(
-            name='{}mavros/mission/push'.format(self.ns), service_class=WaypointPush, persistent=True
-        )
-        
+
         rospy.wait_for_service("{}mavros/cmd/land".format(self.ns))
 
         self.land_client = rospy.ServiceProxy(
@@ -107,23 +89,6 @@ class gnc_api:
 
     def state_cb(self, message):
         self.current_state_g = message
-
-    def pose_glb_cb(self, message):
-        self.current_pose_glb = message
-
-    def get_state(self):
-        s={
-            "connected": self.current_state_g.connected,
-            "armed": self.current_state_g.armed,
-            "guided": self.current_state_g.guided,
-            "manual_input": self.current_state_g.manual_input,
-            "mode": self.current_state_g.mode,
-            "system_status": self.current_state_g.system_status
-        }
-        return s
-
-    def gps_position(self):
-        return self.current_pose_glb
 
     def pose_cb(self, msg):
         """Gets the raw pose of the drone and processes it for use in control.
@@ -184,8 +149,7 @@ class gnc_api:
         return self.enu_2_local()
 
     def land(self):
-        info="""
-        The function changes the mode of the drone to LAND.
+        """The function changes the mode of the drone to LAND.
 
         Returns:
                 0 (int): LAND successful
@@ -194,13 +158,12 @@ class gnc_api:
         srv_land = CommandTOLRequest(0, 0, 0, 0, 0)
         response = self.land_client(srv_land)
         if response.success:
-            result = CGREEN2 + "Land Sent {}".format(str(response.success)) + CEND
-            rospy.loginfo(result)
-            return 0,result
+            rospy.loginfo(
+                CGREEN2 + "Land Sent {}".format(str(response.success)) + CEND)
+            return 0
         else:
-            result = CRED2 + "Landing failed" + CEND
-            rospy.logerr(result)
-            return -1,result,info
+            rospy.logerr(CRED2 + "Landing failed" + CEND)
+            return -1
 
     def wait4connect(self):
         """Wait for connect is a function that will hold the program until communication with the FCU is established.
@@ -241,8 +204,7 @@ class gnc_api:
                 return -1
 
     def set_mode(self, mode):
-        info="""
-        This function changes the mode of the drone to a user specified mode. This takes the mode as a string. Ex. set_mode("GUIDED").
+        """This function changes the mode of the drone to a user specified mode. This takes the mode as a string. Ex. set_mode("GUIDED").
 
         Args:
                 mode (String): Can be set to modes given in https://ardupilot.org/copter/docs/flight-modes.html
@@ -254,17 +216,14 @@ class gnc_api:
         SetMode_srv = SetModeRequest(0, mode)
         response = self.set_mode_client(SetMode_srv)
         if response.mode_sent:
-            result = CGREEN2 + "SetMode Was successful" + CEND
-            rospy.loginfo(result)
-            return 0,result
+            rospy.loginfo(CGREEN2 + "SetMode Was successful" + CEND)
+            return 0
         else:
-            result = CRED2 + "SetMode has failed" + CEND
-            rospy.logerr(result)
-            return -1,result,info
+            rospy.logerr(CRED2 + "SetMode has failed" + CEND)
+            return -1
 
     def set_speed(self, speed_mps):
-        info="""
-        This function is used to change the speed of the vehicle in guided mode. It takes the speed in meters per second as a float as the input.
+        """This function is used to change the speed of the vehicle in guided mode. It takes the speed in meters per second as a float as the input.
 
         Args:
                 speed_mps (Float): Speed in m/s.
@@ -273,8 +232,6 @@ class gnc_api:
                 0 (int): Speed set successful.
                 -1 (int): Speed set unsuccessful.
         """
-        speed_mps=float(speed_mps)
-
         speed_cmd = CommandLongRequest()
         speed_cmd.command = 178
         speed_cmd.param1 = 1
@@ -287,27 +244,24 @@ class gnc_api:
         response = self.command_client(speed_cmd)
 
         if response.success:
-            result = CGREEN2 + "Speed set successfully with code {}".format(str(response.success)) + CEND
-            rospy.loginfo(result)
-            result+= '\n' + CGREEN2 + "Change Speed result was {}".format(str(response.result)) + CEND
-            rospy.loginfo(result)
-            return 0,result
+            rospy.loginfo(
+                CGREEN2 + "Speed set successfully with code {}".format(str(response.success)) + CEND)
+            rospy.loginfo(
+                CGREEN2 + "Change Speed result was {}".format(str(response.result)) + CEND)
+            return 0
         else:
-            result = CRED2 + "Speed set failed with code {}".format(str(response.success)) + CEND
-            rospy.logerr(result)
-            result += CRED2 + "Speed set result was {}".format(str(response.result)) + CEND
-            rospy.logerr(result)
-            return -1,result,info
+            rospy.logerr(
+                CRED2 + "Speed set failed with code {}".format(str(response.success)) + CEND)
+            rospy.logerr(
+                CRED2 + "Speed set result was {}".format(str(response.result)) + CEND)
+            return -1
 
     def set_heading(self, heading):
-        info="""
-        This function is used to specify the drone's heading in the local reference frame. Psi is a counter clockwise rotation following the drone's reference frame defined by the x axis through the right side of the drone with the y axis through the front of the drone.
+        """This function is used to specify the drone's heading in the local reference frame. Psi is a counter clockwise rotation following the drone's reference frame defined by the x axis through the right side of the drone with the y axis through the front of the drone.
 
         Args:
                 heading (Float): θ(degree) Heading angle of the drone.
         """
-        heading = float(heading)
-
         self.local_desired_heading_g = heading
         heading = heading + self.correction_heading_g + self.local_offset_g
 
@@ -333,38 +287,6 @@ class gnc_api:
         qz = sy * cr * cp - cy * sr * sp
 
         self.waypoint_g.pose.orientation = Quaternion(qx, qy, qz, qw)
-        return 0, f"Heading setted to {heading}°"
-
-    def import_mission(self, wl):
-        """
-        wl: Waypoint object list
-        """
-        def waypoint_clear_client():
-            try:
-                response = rospy.ServiceProxy('mavros/mission/clear', WaypointClear)
-                return response.call().success
-            except rospy.ServiceException as e:
-                print(f"Service call failed: {e}")
-                return False
-                
-        waypoint_clear_client()
-        try:
-            service = self.waypoint_client
-            service(start_index=0, waypoints=wl)
-        
-            if service.call(wl).success: #burasi belki list istiyordur. birde oyle dene
-                result = 'write mission success'
-                rospy.loginfo(result)
-                return 0,result
-            else:
-                result = 'write mission error'
-                rospy.loginfo(result)
-                return -1,result
-        
-        except rospy.ServiceException as e:
-            result = f"Write mission error | Service call failed: {e}"
-            rospy.loginfo(result)
-            return -1,result
 
     def set_destination(self, x, y, z, psi):
         """This function is used to command the drone to fly to a waypoint. These waypoints should be specified in the local reference frame. This is typically defined from the location the drone is launched. Psi is counter clockwise rotation following the drone's reference frame defined by the x axis through the right side of the drone with the y axis through the front of the drone.
@@ -375,11 +297,6 @@ class gnc_api:
                 z (Float): z(m) Distance with respect to your local frame.
                 psi (Float): θ(degree) Heading angle of the drone.
         """
-        x=float(x)
-        y=float(y)
-        z=float(z)
-        psi=float(psi)
-
         self.set_heading(psi)
 
         theta = radians((self.correction_heading_g + self.local_offset_g - 90))
@@ -394,13 +311,12 @@ class gnc_api:
 
         z = Zlocal + self.correction_vector_g.position.z + self.local_offset_pose_g.z
 
-        result="Destination set to x:{} y:{} z:{} origin frame".format(x, y, z)
-        rospy.loginfo(result)
+        rospy.loginfo(
+            "Destination set to x:{} y:{} z:{} origin frame".format(x, y, z))
 
         self.waypoint_g.pose.position = Point(x, y, z)
 
         self.local_pos_pub.publish(self.waypoint_g)
-        return 0, result
 
     def arm(self):
         """Arms the drone for takeoff.
@@ -426,10 +342,10 @@ class gnc_api:
         else:
             if response.success:
                 rospy.loginfo(CGREEN2 + "Arming successful" + CEND)
-                return 0,CGREEN2 + "Arming successful" + CEND
+                return 0
             else:
                 rospy.logerr(CRED2 + "Arming failed" + CEND)
-                return -1,CRED2 + "Arming failed" + CEND
+                return -1
 
     def takeoff(self, takeoff_alt):
         """The takeoff function will arm the drone and put the drone in a hover above the initial position.
@@ -441,18 +357,16 @@ class gnc_api:
                 0 (int): Takeoff successful.
                 -1 (int): Takeoff unsuccessful.
         """
-        takeoff_alt=float(takeoff_alt)
-
         self.arm()
         takeoff_srv = CommandTOLRequest(0, 0, 0, 0, takeoff_alt)
         response = self.takeoff_client(takeoff_srv)
         rospy.sleep(3)
         if response.success:
             rospy.loginfo(CGREEN2 + "Takeoff successful" + CEND)
-            return 0,CGREEN2 + "Takeoff successful" + CEND
+            return 0
         else:
             rospy.logerr(CRED2 + "Takeoff failed" + CEND)
-            return -1,CRED2 + "Takeoff failed" + CEND
+            return -1
 
     def initialize_local_frame(self):
         """This function will create a local reference frame based on the starting location of the drone. This is typically done right before takeoff. This reference frame is what all of the the set destination commands will be in reference to."""

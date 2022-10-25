@@ -1,0 +1,80 @@
+{
+    "type": "telemetry",
+    "message": {
+        "companion": {
+            "system": {
+                "config": {
+                    "system": "Linux",
+                    "node_name": "robotmaker",
+                    "release": "5.15.0-50-generic",
+                    "version": "#56~20.04.1-Ubuntu SMP Tue Sep 27 15:51:29 UTC 2022",
+                    "machine": "x86_64",
+                    "processor": "x86_64"
+                },
+                "platform": {
+                    "cpu_percent": 83.7,
+                    "virtual_memory": {
+                        "total": 16494366720,
+                        "available": 11268907008,
+                        "percent": 31.7,
+                        "used": 3923206144,
+                        "free": 6610907136,
+                        "active": 2248499200,
+                        "inactive": 5946028032,
+                        "buffers": 434647040,
+                        "cached": 5525606400,
+                        "shared": 965926912,
+                        "slab": 728702976
+                    },
+                    "virtual_memory_available": 68.31973121063238,
+                    "virtual_memory_used": 31.7
+                },
+                "processes": [
+                    {
+                        "name": "chrome",
+                        "pid": 9971,
+                        "username": "joaoneto",
+                        "vms": 1156966.5
+                    },
+                    {
+                        "name": "chrome",
+                        "pid": 9780,
+                        "username": "joaoneto",
+                        "vms": 1156554.1875
+                    }
+                ]
+
+            },
+            "connectivity": {
+                "rssi": [
+                    [
+                        "wlp2",
+                        "-53"
+                    ]
+                ],
+                "local_ip": "192.168.1.173",
+                "public_ip": "179.218.3.60"
+            }
+        },
+        "state": {
+            "connected": true,
+            "armed": false,
+            "guided": false,
+            "manual_input": true,
+            "mode": "STABILIZE",
+            "system_status": 3
+        },
+        "position": {
+            "location": {
+                "x": -0.008386431068842331,
+                "y": 0.012552853294305917,
+                "z": -0.071,
+                "theta": 1.366358710597936
+            },
+            "gps": {
+                "long": -43.1314851,
+                "lat": -22.8974658
+            }
+        }
+    }
+}
